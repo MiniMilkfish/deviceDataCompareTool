@@ -181,22 +181,22 @@
         </div>
     </div>
     <script type="text/javascript">
-        let myChart = '',                       //图表的全局实例
-            eChartptions = {},                  //图表的配置
-            targetUploadControlId = '',         //当前操作的上传组件
-            timeRange = [],                     //比较的时间区间
-            timeSeries = [],                    //时间轴数据
-            compareDatas = new Array(3);        //比较的数据表 0: 设备数据； 1 参考数据； 2 调整后的设备数据
+        let myChart = '',                           //图表的全局实例
+            eChartptions = {},                      //图表的配置
+            targetUploadControlId = '',             //当前操作的上传组件
+            timeRange = [],                         //比较的时间区间
+            timeSeries = [],                        //时间轴数据 "2020-11-11 11:11:11"(秒) 或 "2020-11-11 11:11"（分）
+            compareDatas = new Array(3);            //比较的数据表 0: 设备数据； 1 参考数据； 2 调整后的设备数据
 
         // 工作表
         let workbookDevice = {},
             workbookRefer = {};
 
-        let timeType = 1;                        //默认时间类型
-        let currentDataTypeSelected = 'd1';               //当前选中的数据类型
+        let timeType = 1;                           //默认时间类型
+        let currentDataTypeSelected = 'd1';         //当前选中的数据类型
         const FILE_TYPES = ['xls', 'xlsx', 'ods'];  //支持的格式列表
         const VALIED_ROW = 2;
-        const LEGEND_DATA = ['设备数据', '参考数据', '设备数据 - 调整后的'];    //图例数据
+        const LEGEND_DATA = ['设备数据', '参考数据'];    //图例数据
 
 
         $(function () {
@@ -240,8 +240,6 @@
                         return;
                     }
 
-                    console.log('workbook: ', workbook);
-
                     handleSheetsData(workbook, function (sheetData, err) {
                         if (err) {
                             showWarningModal(err);
@@ -256,43 +254,59 @@
             });
 
             $("#sheetSelectControl").on('change', function (event) {
-                let selectValue = event.target.value;
-                if (selectValue) {
-                    workbookDevice.Sheets[selectValue]
+                toogleLoading();
+                setTimeout(() => {
+                    let selectValue = event.target.value;
+                    if (selectValue) {
+                        workbookDevice.Sheets[selectValue]
 
-                    switchDeviceSheet(workbookDevice.Sheets[selectValue], function (sheetData, err) {
-                        if (err) {
-                            showWarningModal(err);
-                            return;
-                        }
+                        switchDeviceSheet(workbookDevice.Sheets[selectValue], function (sheetData, err) {
+                            if (err) {
+                                showWarningModal(err);
+                                return;
+                            }
 
-                        compareDatas[0] = sheetData;
-                        handleStructureOptionsRerennderECharts();
-                    });
-                }
+                            compareDatas[0] = sheetData;
+                            handleStructureOptionsRerennderECharts();
+                        });
+                    }
+                }, 500);
             });
 
             $("#dataTypeControl").on('change', function (event) {
-                let selectValue = event.target.value;
-                if (selectValue) {
-                    currentDataTypeSelected = selectValue;
+                toogleLoading();
+                setTimeout(() => {
+                    let selectValue = event.target.value;
+                    if (selectValue) {
+                        currentDataTypeSelected = selectValue;
 
-                    handleStructureOptionsRerennderECharts();
-                }
+                        handleStructureOptionsRerennderECharts();
+                    }
+                }, 500);
             });
 
             $("#coefficientControlSubmit").on('click', function () {
-                handleStructureOptionsRerennderECharts(true);
+                toogleLoading();
+                setTimeout(() => {
+                    handleStructureOptionsRerennderECharts();
+                }, 500);
             });
 
             $("#timeSelectControl").on('change', function (event) {
-                timeType = event.target.value;
+                toogleLoading();
+                setTimeout(() => {
+                    timeType = parseInt(event.target.value);
+                    handleStructureOptionLegend();
+
+                    handleStructureOptionsRerennderECharts();
+                }, 500);
             });
         });
 
         // 构造图表配置并重新渲染图表
-        function handleStructureOptionsRerennderECharts(isCoefficient) {
-            let coefficientValue = $('#coefficientDeviceControl').val();
+        function handleStructureOptionsRerennderECharts() {
+            let coefficientDeviceValue = $('#coefficientDeviceControl').val(),
+                coefficientReferValue = $('#coefficientReferControl').val();
 
             let option = {
                 xAxis: {
@@ -301,41 +315,46 @@
                 series: []
             };
 
-            if (isCoefficient) {
-                compareDatas[2] = 123;
-            }
-            compareDatas.map(function (sheetData, index) {
+            compareDatas.map(function (sheetData, dataIndex) {
                 let serie = {
-                    name: [LEGEND_DATA[index]],
+                    name: [LEGEND_DATA[dataIndex]],
                     type: 'line',
                     connectNulls: true,
                     data: []
                 };
-                if (sheetData || isCoefficient) {
+                if (sheetData) {
                     timeSeries.map(function (t, tIndex) {
-                        if (index === 2 && isCoefficient) {
-                            let validData = compareDatas[0].filter(function (data) { return data.t === t });
-                            if (validData[0]) {
-                                let data = validData[0][currentDataTypeSelected];
-                                let replacedDataStr = coefficientValue.replace(/[x]/, data);
-                                let evaledData = data;
-                                try {
-                                    evaledData = eval(replacedDataStr)
-                                } catch (error) {
-                                    evaledData = data;
-                                }
-
-                                serie.data.push(evaledData);
+                        let validData = sheetData.filter(function (data) {
+                            let dataTime = data.t;
+                            if (timeType === 1) {
+                                dataTime = getFormatDateNew('f', dataTime); //分钟
                             } else {
-                                serie.data.push('');
+                                dataTime = getFormatDateNew('a', dataTime); //秒
                             }
+                            return dataTime === t;
+                        });
+
+                        if (validData[0]) {
+                            let data = validData[0][currentDataTypeSelected];
+                            let replacedDataStr = 0;
+                            if (dataIndex === 0) {
+                                replacedDataStr = coefficientDeviceValue && coefficientDeviceValue.length > 0 ? coefficientDeviceValue.replace(/[x]/, data) : data;
+                            } else {
+                                replacedDataStr = coefficientReferValue && coefficientReferValue.length > 0 ? coefficientReferValue.replace(/[x]/, data) : data;
+                            }
+                            let evaledData = data;
+                            try {
+                                evaledData = eval(replacedDataStr)
+                            } catch (error) {
+                                evaledData = data;
+                            }
+
+                            serie.data.push(evaledData);
                         } else {
-                            let validData = sheetData.filter(function (data) { return data.t === t });
-                            serie.data.push(validData[0] ? validData[0][currentDataTypeSelected] : '');
+                            serie.data.push('');
                         }
                         return true;
                     });
-
                 }
                 option.series.push(serie);
             });
@@ -357,8 +376,17 @@
                     h = D.getHours(),
                     i = D.getMinutes(),
                     s = D.getSeconds();
-                timeSeries.push([y, _[m] || m, _[d] || d].join('-') + ' ' + [_[h] || h, _[i] || i, _[s] || s].join(':'));
-                start += 1000;
+                if (timeType === 1) {
+                    // 分钟
+                    timeSeries.push([y, _[m] || m, _[d] || d].join('-') + ' ' + [_[h] || h, _[i] || i].join(':'));
+                } else {
+                    // 秒
+                    timeSeries.push([y, _[m] || m, _[d] || d].join('-') + ' ' + [_[h] || h, _[i] || i, _[s] || s].join(':'));
+                }
+
+                start += (
+                    timeType === 1 ? 60 * 1000 : 1000
+                );
             }
         }
 
@@ -422,6 +450,7 @@
                 series: []
             };
             myChart.setOption(eChartptions);
+            toogleLoading(false);
         }
 
         /**
@@ -433,8 +462,13 @@
         }
 
         // loading 显示/隐藏
-        function toogleLoading() {
-            $(".msk").toggle();
+        function toogleLoading(toggle) {
+            if (toggle === void 0) { toggle = true; }
+            if (toggle) {
+                $(".msk").show();
+            } else {
+                $(".msk").hide();
+            }
         }
 
         /**
@@ -480,7 +514,6 @@
                 let sheet = workbook.Sheets[SheetNames[0]];
 
                 let range = handleSheetRange(sheet['!ref']);
-                console.log('数据区间： ', range);
 
                 // 获取数据
                 let sheetData = range[1].map(function (rowNumber, _index) {
@@ -505,6 +538,11 @@
 
                 // - deviceDataFile - 设备数据
                 $("#referDataFile").removeAttr('disabled');
+                $("#sheetSelectControl").removeAttr('disabled');
+                $("#dataTypeControl").removeAttr('disabled');
+                $("#coefficientDeviceControl").removeAttr('disabled');
+                $("#coefficientReferControl").removeAttr('disabled');
+                $("#coefficientControlSubmit").removeAttr('disabled');
 
                 // 同步Sheet 页
                 $("#sheetSelectControl").empty();   // 重置
@@ -530,7 +568,6 @@
         */
         function switchDeviceSheet(sheet, callback) {
             let range = handleSheetRange(sheet['!ref']);
-            console.log('数据区间： ', range);
 
             // 获取有效的时间区间
             if (!sheet[range[0][0] + '' + range[1][VALIED_ROW - 1]]) {
@@ -541,7 +578,6 @@
             let startTime = sheet[range[0][0] + '' + range[1][VALIED_ROW - 1]].w.trim(),
                 endTime = sheet[range[0][0] + '' + range[1].length].w.trim();
             timeRange = [startTime, endTime];
-            console.log('timeRange: ', timeRange);
 
             handleStructureOptionLegend();
 
