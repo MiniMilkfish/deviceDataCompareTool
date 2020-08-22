@@ -21,9 +21,8 @@
     }
     echarts.registerTheme('walden', {
         "color": [
-            "#04a8f5",
-            "#f2e800",
-            "#f70000"
+            "#000000",
+            "#ff0000"
         ],
         "backgroundColor": "rgba(252,252,252,0)",
         "textStyle": {},
@@ -189,9 +188,8 @@
             "symbol": "emptyCircle",
             "smooth": false,
             "color": [
-                "#04a8f5",
-                "#f2e800",
-                "#f70000"
+                "#000000",
+                "#ff0000"
             ],
             "label": {
                 "normal": {
