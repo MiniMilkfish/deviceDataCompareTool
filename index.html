@@ -324,29 +324,41 @@
                 series: []
             };
 
-            compareDatas.map(function (sheetData, dataIndex) {
+
+            for (let i = 0, iLength = compareDatas.length; i < iLength; i++) {
+                const sheetData = compareDatas[i];
+
                 let serie = {
-                    name: [LEGEND_DATA[dataIndex]],
+                    name: [LEGEND_DATA[i]],
                     type: 'line',
                     connectNulls: true,
                     data: []
                 };
+
                 if (sheetData) {
-                    timeSeries.map(function (t, tIndex) {
-                        let validData = sheetData.filter(function (data) {
-                            let dataTime = data.t;
+                    for (let j = 0, jLength = timeSeries.length; j < jLength; j++) {
+                        const t = timeSeries[j];
+
+                        let validData = [];
+                        for (let k = 0, kLength = sheetData.length; k < kLength; k++) {
+                            const kElement = sheetData[k];
+                            let dataTime = kElement.t;
                             if (timeType === 1) {
                                 dataTime = getFormatDateNew('f', dataTime); //分钟
                             } else {
                                 dataTime = getFormatDateNew('a', dataTime); //秒
                             }
-                            return dataTime === t;
-                        });
+
+                            if (dataTime === t) {
+                                validData.push(sheetData[k]);
+                                break;
+                            }
+                        }
 
                         if (validData[0]) {
                             let data = validData[0][currentDataTypeSelected];
                             let replacedDataStr = 0;
-                            if (dataIndex === 0) {
+                            if (i === 0) {
                                 replacedDataStr = coefficientDeviceValue && coefficientDeviceValue.length > 0 ? coefficientDeviceValue.replace(/[x]/, data) : data;
                             } else {
                                 replacedDataStr = coefficientReferValue && coefficientReferValue.length > 0 ? coefficientReferValue.replace(/[x]/, data) : data;
@@ -362,11 +374,11 @@
                         } else {
                             serie.data.push('');
                         }
-                        return true;
-                    });
+                    }
                 }
                 option.series.push(serie);
-            });
+            }
+
             initECharts(option);
             console.timeEnd(label);
         }
@@ -526,19 +538,24 @@
                 let range = handleSheetRange(sheet['!ref']);
 
                 // 获取数据
-                let sheetData = range[1].map(function (rowNumber, _index) {
+                let sheetData = [];
+                for (i = 0, rowRange = range[1], rLength = rowRange.length; i < rLength; i++) {
+                    const rElement = rowRange[i];
                     let rowData = {};
-                    range[0].map(function (rowHeader, headerIndex) {
-                        headerIndex === 0 ? (
-                            rowData['t'] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+
+                    for (j = 0, columnRange = range[0], cLength = columnRange.length; j < cLength; j++) {
+                        const cElement = columnRange[j];
+
+                        j === 0 ? (
+                            rowData['t'] = sheet[cElement + '' + rElement].w.trim() || ''
                         ) : (
-                                sheet[rowHeader + '' + rowNumber] ? (
-                                    rowData['d' + headerIndex] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+                                sheet[cElement + '' + rElement] ? (
+                                    rowData['d' + j] = sheet[cElement + '' + rElement].w.trim() || ''
                                 ) : (null)
                             );
-                    });
-                    return rowData;
-                });
+                    }
+                    sheetData.push(rowData);
+                }
                 sheetData.shift();       //移除表头
 
                 compareDatas[1] = sheetData;
@@ -592,19 +609,24 @@
             handleStructureOptionLegend();
 
             // 获取数据
-            let sheetData = range[1].map(function (rowNumber, _index) {
+            let sheetData = [];
+            for (i = 0, rowRange = range[1], rLength = rowRange.length; i < rLength; i++) {
+                const rElement = rowRange[i];
                 let rowData = {};
-                range[0].map(function (rowHeader, headerIndex) {
-                    headerIndex === 0 ? (
-                        rowData['t'] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+
+                for (j = 0, columnRange = range[0], cLength = columnRange.length; j < cLength; j++) {
+                    const cElement = columnRange[j];
+
+                    j === 0 ? (
+                        rowData['t'] = sheet[cElement + '' + rElement].w.trim() || ''
                     ) : (
-                            sheet[rowHeader + '' + rowNumber] ? (
-                                rowData['d' + headerIndex] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+                            sheet[cElement + '' + rElement] ? (
+                                rowData['d' + j] = sheet[cElement + '' + rElement].w.trim() || ''
                             ) : (null)
                         );
-                });
-                return rowData;
-            });
+                }
+                sheetData.push(rowData);
+            }
             let sheetHeader = sheetData.shift();       //移除表头
 
             // 同步数据类型
