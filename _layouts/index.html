@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <title>设备数据 VS 参考数据</title>
+
+    <!-- FontAwesome字体图标 -->
+    <link type="text/css" href="../js/plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+
+    <!-- Bootstrap CSS -->
+    <link type="text/css" href="../js/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- jQuery相关引用 -->
+    <script type="text/javascript" src="../js/plugins/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="../js/plugins/jquery/jquery.cookie.js"></script>
+
+    <!-- Popper JS -->
+    <script type="text/javascript" src="../js/plugins/popper/popper.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script type="text/javascript" src="../js/plugins/bootstrap/js/bootstrap.min.js"></script>
+
+
+
+    <!-- sheetjs -->
+    <script type="text/javascript" src="../js/plugins/sheetjs/xlsx.core.min.js"></script>
+
+    <!--Echarts-->
+    <script type="text/javascript" src="../js/plugins/echarts/echarts.min.js"></script>
+    <script type="text/javascript" src="../js/plugins/echarts/walden.js"></script>
+
+    <!-- 通用js -->
+    <script type="text/javascript" src="../js/public/common.js"></script>
+    <script type="text/javascript" src="../js/index.js"></script>
+</head>
+<style>
+    .custom-file-label {
+        overflow: hidden;
+    }
+
+    .msk {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: rgb(255 255 255 / 77%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        margin: 0;
+        padding: 0;
+        z-index: 10000;
+        display: none;
+    }
+
+    .msk .spin-loading {
+        position: fixed;
+        top: calc(50% - 65px);
+        left: calc(50% - 64px);
+    }
+
+    .custom-file-input,
+    .fa {
+        cursor: pointer;
+    }
+
+    .fa {
+        color: red;
+    }
+
+    .echartTools {
+        margin: 10px 10px 0;
+    }
+</style>
+
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <div class="alert alert-light alert-dismissible fade show" role="alert">
+                <strong>自动生成对比趋势图表</strong>
+                选择并上传设备数据和对应的参考数据文件（文件支持&nbsp;<kbd>xls</kbd>&nbsp;<kbd>xlsx</kbd>&nbsp;<kbd>ods</kbd>&nbsp;等格式）.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form>
+                <div class="form-row">
+                    <div class="form-group col-md-2">
+                        <label for="inputEmail4">时间类型&nbsp;&nbsp;<i class="fa fa-info-circle" aria-hidden="true"
+                                data-toggle="tooltip" data-placement="right"
+                                title="切换时间的最小单位,默认最小时间单位为分钟"></i>：</label>
+                        <select class="custom-select" id="timeSelectControl">
+                            <option value="1" selected>分</option>
+                            <option value="2">秒</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label for="inputZip"><strong>设备数据文件</strong>&nbsp;&nbsp;<i class="fa fa-info-circle"
+                                aria-hidden="true" data-toggle="tooltip" data-placement="right"
+                                title="时间列自定义格式：yyyy-mm-dd hh:mm:ss"></i>：</label>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" id="deviceDataFile" accept=".xls,.xlsx,.ods">
+                            <label class="custom-file-label" for="deviceDataFile">请选择对应文件~ Orz</label>
+                        </div>
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label for="inputCity"><strong>参考数据文件</strong>&nbsp;&nbsp;<i class="fa fa-info-circle"
+                                aria-hidden="true" data-toggle="tooltip" data-placement="right"
+                                title="时间列自定义格式：yyyy-mm-dd hh:mm:ss"></i>：</label>
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" id="referDataFile" accept=".xls,.xlsx,.ods"
+                                disabled>
+                            <label class="custom-file-label" for="referDataFile">请选择对应文件~ Orz</label>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <div class="card">
+                <div class="echartTools">
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="inputEmail4">设备数据分页：</label>
+                            <select class="custom-select" id="sheetSelectControl" disabled>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="inputEmail4">数据类型：</label>
+                            <select class="custom-select" id="dataTypeControl" disabled>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="inputEmail4">系数公式&nbsp;&nbsp;<i class="fa fa-info-circle" aria-hidden="true"
+                                    data-toggle="tooltip" data-placement="right"
+                                    title="使用小写英文字母 x 表示要调整的数值"></i>：</label>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="coefficientDeviceControl"
+                                    placeholder="设备数据系数公式" aria-label="Recipient's username"
+                                    aria-describedby="button-addon2" disabled>
+                                <input type="text" class="form-control" id="coefficientReferControl"
+                                    placeholder="参考数据系数公式" aria-label="Recipient's username"
+                                    aria-describedby="button-addon2" disabled>
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" id="coefficientControlSubmit" type="button"
+                                        id="button-addon2" disabled>公式提交</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body" id="chartContainer"
+                    style="height:400px; width: auto; margin-top: 5px; margin-bottom: 5px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="warningModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">错误提示</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="warningMsg">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-dismiss="modal"
+                            onclick="resetFileControl()">了解</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="msk">
+            <div class="spinner-border m-5 spin-loading" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        let myChart = '',                           //图表的全局实例
+            eChartptions = {},                      //图表的配置
+            targetUploadControlId = '',             //当前操作的上传组件
+            timeRange = [],                         //比较的时间区间
+            timeSeries = [],                        //时间轴数据 "2020-11-11 11:11:11"(秒) 或 "2020-11-11 11:11"（分）
+            compareDatas = new Array(3);            //比较的数据表 0: 设备数据； 1 参考数据； 2 调整后的设备数据
+
+        // 工作表
+        let workbookDevice = {},
+            workbookRefer = {};
+
+        let timeType = 1;                           //默认时间类型
+        let currentDataTypeSelected = 'd1';         //当前选中的数据类型
+        const FILE_TYPES = ['xls', 'xlsx', 'ods'];  //支持的格式列表
+        const VALIED_ROW = 2;
+        const LEGEND_DATA = ['设备数据', '参考数据'];    //图例数据
+
+
+        $(function () {
+            // Echarts 容器初始化
+            myChart = echarts.init(document.getElementById("chartContainer"), 'walden');
+            initECharts();
+
+            $('[data-toggle="tooltip"]').tooltip();
+
+            // 窗体自适应
+            let resizeTimer = null;
+            $(window).bind('resize', function () {
+                if (resizeTimer) clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function () {
+                    myChart.resize();
+                }, 100);
+            });
+
+            // 文件变更 
+            $('.custom-file-input').on('change', function (event) {
+                let currentDom = $(this);
+                targetUploadControlId = currentDom[0].id;
+
+                let files = event.currentTarget.files;
+                if (files && files.length <= 0) {
+                    return;
+                }
+
+                let file = files[0];
+                if (!FILE_TYPES.includes(file.name.split('.').pop())) {
+                    showWarningModal("该文件类型不在支持列表里，文件后缀请认准： " + FILE_TYPES.join('、'));
+                    return;
+                }
+
+                // 解析文件内容
+                toogleLoading();
+                readWorkbookFromLocalFile(file, function (workbook) {
+                    toogleLoading();
+                    if (workbook && workbook.SheetNames.length <= 0) {
+                        showWarningModal("该表文件不存在有效的内容页");
+                        return;
+                    }
+
+                    handleSheetsData(workbook, function (sheetData, err) {
+                        if (err) {
+                            showWarningModal(err);
+                            return;
+                        }
+
+                        currentDom.siblings()[0].innerText = file.name;
+
+                        handleStructureOptionsRerennderECharts();
+                    })
+                })
+            });
+
+            $("#sheetSelectControl").on('change', function (event) {
+                toogleLoading();
+                setTimeout(() => {
+                    let selectValue = event.target.value;
+                    if (selectValue) {
+                        workbookDevice.Sheets[selectValue]
+
+                        switchDeviceSheet(workbookDevice.Sheets[selectValue], function (sheetData, err) {
+                            if (err) {
+                                showWarningModal(err);
+                                return;
+                            }
+
+                            compareDatas[0] = sheetData;
+                            handleStructureOptionsRerennderECharts();
+                        });
+                    }
+                }, 500);
+            });
+
+            $("#dataTypeControl").on('change', function (event) {
+                toogleLoading();
+                setTimeout(() => {
+                    let selectValue = event.target.value;
+                    if (selectValue) {
+                        currentDataTypeSelected = selectValue;
+
+                        handleStructureOptionsRerennderECharts();
+                    }
+                }, 500);
+            });
+
+            $("#coefficientControlSubmit").on('click', function () {
+                toogleLoading();
+                setTimeout(() => {
+                    handleStructureOptionsRerennderECharts();
+                }, 500);
+            });
+
+            $("#timeSelectControl").on('change', function (event) {
+                toogleLoading();
+                setTimeout(() => {
+                    timeType = parseInt(event.target.value);
+                    handleStructureOptionLegend();
+
+                    handleStructureOptionsRerennderECharts();
+                }, 500);
+            });
+        });
+
+        // 构造图表配置并重新渲染图表
+        function handleStructureOptionsRerennderECharts() {
+            let coefficientDeviceValue = $('#coefficientDeviceControl').val(),
+                coefficientReferValue = $('#coefficientReferControl').val();
+
+            let option = {
+                xAxis: {
+                    data: timeSeries
+                },
+                series: []
+            };
+
+            compareDatas.map(function (sheetData, dataIndex) {
+                let serie = {
+                    name: [LEGEND_DATA[dataIndex]],
+                    type: 'line',
+                    connectNulls: true,
+                    data: []
+                };
+                if (sheetData) {
+                    timeSeries.map(function (t, tIndex) {
+                        let validData = sheetData.filter(function (data) {
+                            let dataTime = data.t;
+                            if (timeType === 1) {
+                                dataTime = getFormatDateNew('f', dataTime); //分钟
+                            } else {
+                                dataTime = getFormatDateNew('a', dataTime); //秒
+                            }
+                            return dataTime === t;
+                        });
+
+                        if (validData[0]) {
+                            let data = validData[0][currentDataTypeSelected];
+                            let replacedDataStr = 0;
+                            if (dataIndex === 0) {
+                                replacedDataStr = coefficientDeviceValue && coefficientDeviceValue.length > 0 ? coefficientDeviceValue.replace(/[x]/, data) : data;
+                            } else {
+                                replacedDataStr = coefficientReferValue && coefficientReferValue.length > 0 ? coefficientReferValue.replace(/[x]/, data) : data;
+                            }
+                            let evaledData = data;
+                            try {
+                                evaledData = eval(replacedDataStr)
+                            } catch (error) {
+                                evaledData = data;
+                            }
+
+                            serie.data.push(evaledData);
+                        } else {
+                            serie.data.push('');
+                        }
+                        return true;
+                    });
+                }
+                option.series.push(serie);
+            });
+            initECharts(option);
+        }
+
+        // 构造图表的X 轴数据
+        function handleStructureOptionLegend() {
+            let start = Number(new Date(timeRange[0])),
+                end = Number(new Date(timeRange[1]));
+            const _ = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09'];
+
+            timeSeries = [];
+            while (start <= end) {
+                let D = new Date(start);
+                let y = D.getFullYear(),
+                    m = D.getMonth() + 1,
+                    d = D.getDate(),
+                    h = D.getHours(),
+                    i = D.getMinutes(),
+                    s = D.getSeconds();
+                if (timeType === 1) {
+                    // 分钟
+                    timeSeries.push([y, _[m] || m, _[d] || d].join('-') + ' ' + [_[h] || h, _[i] || i].join(':'));
+                } else {
+                    // 秒
+                    timeSeries.push([y, _[m] || m, _[d] || d].join('-') + ' ' + [_[h] || h, _[i] || i, _[s] || s].join(':'));
+                }
+
+                start += (
+                    timeType === 1 ? 60 * 1000 : 1000
+                );
+            }
+        }
+
+        /**
+         * 初始化图表
+         * @param {Object} option - 配置项
+        */
+        function initECharts(option) {
+            eChartptions = option || {
+                title: {
+                    text: '设备数据 VS 参考数据',
+                    subtext: '趋势图'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: LEGEND_DATA
+                },
+                dataZoom: [
+                    {
+                        type: 'slider',
+                        xAxisIndex: 0,
+                        filterMode: 'empty'
+                    },
+                    {
+                        type: 'slider',
+                        yAxisIndex: 0,
+                        filterMode: 'empty'
+                    },
+                    {
+                        type: 'inside',
+                        xAxisIndex: 0,
+                        filterMode: 'empty'
+                    },
+                    {
+                        type: 'inside',
+                        yAxisIndex: 0,
+                        filterMode: 'empty'
+                    }
+                ],
+                toolbox: {
+                    show: true,
+                    feature: {
+                        magicType: { type: ['line', 'bar'] },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: []
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: '{value}'
+                    }
+                },
+                series: []
+            };
+            myChart.setOption(eChartptions);
+            toogleLoading(false);
+        }
+
+        /**
+         * 展示警告窗体
+        */
+        function showWarningModal(msg) {
+            $("#warningModal #warningMsg").text(msg);
+            $("#warningModal").modal('show');
+        }
+
+        // loading 显示/隐藏
+        function toogleLoading(toggle) {
+            if (toggle === void 0) { toggle = true; }
+            if (toggle) {
+                $(".msk").show();
+            } else {
+                $(".msk").hide();
+            }
+        }
+
+        /**
+         * 模态窗口关闭时间监听
+        */
+        $('#warningModal').on('hide.bs.modal', function () {
+            resetFileControl();
+        });
+
+        /**
+         * 重置文件弹窗
+        */
+        function resetFileControl() {
+            $('#' + targetUploadControlId).replaceWith($('#' + targetUploadControlId).val('').clone(true));
+        }
+
+        /**
+         * 读取本地excel文件
+         * @param {Object} file - 文件
+         * @param {Function} callback - 回调函数
+         * */
+        function readWorkbookFromLocalFile(file, callback) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var data = e.target.result;
+                var workbook = XLSX.read(data, { type: 'binary' });
+                if (callback) callback(workbook);
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        /**
+         * 获取有效的数据
+         * @param {Objct} workbook
+         * @param {Function} callback
+        */
+        function handleSheetsData(workbook, callback) {
+            let SheetNames = workbook.SheetNames;
+            if (targetUploadControlId && targetUploadControlId === 'referDataFile') {
+                workbookRefer = workbook;
+
+                // - referDataFile - 参考数据
+                let sheet = workbook.Sheets[SheetNames[0]];
+
+                let range = handleSheetRange(sheet['!ref']);
+
+                // 获取数据
+                let sheetData = range[1].map(function (rowNumber, _index) {
+                    let rowData = {};
+                    range[0].map(function (rowHeader, headerIndex) {
+                        headerIndex === 0 ? (
+                            rowData['t'] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+                        ) : (
+                                sheet[rowHeader + '' + rowNumber] ? (
+                                    rowData['d' + headerIndex] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+                                ) : (null)
+                            );
+                    });
+                    return rowData;
+                });
+                sheetData.shift();       //移除表头
+
+                compareDatas[1] = sheetData;
+                callback(sheetData);
+            } else {
+                workbookDevice = workbook;
+
+                // - deviceDataFile - 设备数据
+                $("#referDataFile").removeAttr('disabled');
+                $("#sheetSelectControl").removeAttr('disabled');
+                $("#dataTypeControl").removeAttr('disabled');
+                $("#coefficientDeviceControl").removeAttr('disabled');
+                $("#coefficientReferControl").removeAttr('disabled');
+                $("#coefficientControlSubmit").removeAttr('disabled');
+
+                // 同步Sheet 页
+                $("#sheetSelectControl").empty();   // 重置
+                SheetNames.map(function (key) {
+                    if (key !== 't') {
+                        $("#sheetSelectControl").append('<option value="' + key + '">' + key + '</option>');
+                    }
+                    return true;
+                });
+
+                let sheet = workbook.Sheets[SheetNames[0]];
+                switchDeviceSheet(sheet, function (sheetData, msg) {
+                    compareDatas[0] = sheetData;
+                    callback(sheetData, msg);
+                });
+            }
+        }
+
+        /**
+         * 切换设备数据页
+         * @param {Object} sheet - 页内容
+         * @param {Function} callback
+        */
+        function switchDeviceSheet(sheet, callback) {
+            let range = handleSheetRange(sheet['!ref']);
+
+            // 获取有效的时间区间
+            if (!sheet[range[0][0] + '' + range[1][VALIED_ROW - 1]]) {
+                callback(null, "数据的开始时间字段获取失败");
+                return;
+            }
+
+            let startTime = sheet[range[0][0] + '' + range[1][VALIED_ROW - 1]].w.trim(),
+                endTime = sheet[range[0][0] + '' + range[1].length].w.trim();
+            timeRange = [startTime, endTime];
+
+            handleStructureOptionLegend();
+
+            // 获取数据
+            let sheetData = range[1].map(function (rowNumber, _index) {
+                let rowData = {};
+                range[0].map(function (rowHeader, headerIndex) {
+                    headerIndex === 0 ? (
+                        rowData['t'] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+                    ) : (
+                            sheet[rowHeader + '' + rowNumber] ? (
+                                rowData['d' + headerIndex] = sheet[rowHeader + '' + rowNumber].w.trim() || ''
+                            ) : (null)
+                        );
+                });
+                return rowData;
+            });
+            let sheetHeader = sheetData.shift();       //移除表头
+
+            // 同步数据类型
+            $("#dataTypeControl").empty();  // 重置
+            Object.keys(sheetHeader).map(function (key) {
+                if (key !== 't') {
+                    $("#dataTypeControl").append('<option value="' + key + '">' + sheetHeader[key] + '</option>');
+                }
+                return true;
+            })
+
+            callback(sheetData);
+        }
+
+        /**
+         * 获取表格的范围
+         * @param {String} rangeStr "A1:E4"
+         * @return {Array} range [['A', 'B', 'C', 'D', 'E'], [1, 2, 3, 4]]
+        */
+        function handleSheetRange(rangeStr) {
+            let range = rangeStr.split(':');
+            let rowRangeEx = [], columnRangeEx = [], rowRange = [], columnRange = [];
+            range.map(function (r, i) {
+                rowRangeEx[i] = r.match(/[A-Za-z]+/g)[0];
+                columnRangeEx[i] = parseInt(r.match(/[\d]+/g)[0]);
+                return true;
+            });
+
+            let rowRangeStart = rowRangeEx[0].charCodeAt(), rowRangeEnd = rowRangeEx[1].charCodeAt();
+            for (let i = rowRangeStart; i <= rowRangeEnd; i++) {
+                rowRange.push(String.fromCharCode(i));
+            }
+
+            for (let i = columnRangeEx[0]; i <= columnRangeEx[1]; i++) {
+                columnRange.push(i);
+            }
+            return [rowRange, columnRange];
+        }
+    </script>
+</body>
+
+</html>
